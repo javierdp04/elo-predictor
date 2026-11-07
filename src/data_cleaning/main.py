@@ -1,7 +1,4 @@
-import numpy as np
 import pandas as pd
-from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
 
 COLUMNS_TO_DROP_GAMES = [
                             'site', 'black_rating_diff', 
@@ -9,28 +6,38 @@ COLUMNS_TO_DROP_GAMES = [
                             'black_title', 'eco', 
                             'opening', 'event',
                             'utc_date', 'utc_time',
-                            'white', 'black'
-                            'time_control'
+                            'white', 'black',
 ]
 
 COLUMNS_TO_DROP_MOVES = [
                             'uci', 'san',
-                            'fen'
+                            'fen', 'color'
 ]
 SUPERIOR_LIMIT_NUM_PLIES = 200
 INFERIOR_LIMIT_NUM_PLIES = 10
-SUPERIOR_LIMIT_RATING_DIFF = 75
+SUPERIOR_LIMIT_RATING_DIFF = 40
 
 
-def clean_games_data(game_data : pd.DataFrame):
-    game_data = game_data.copy()
-    return( game_data.pipe(filter_by_equal_conditional_expression, 'event', 'Rated Rapid game')
+def clean_games_data(games_data : pd.DataFrame):
+    return( 
+        games_data.pipe(filter_by_equal_conditional_expression, 'event', 'Rated Rapid game')
             .pipe(filter_games_with_same_white_and_black_player)
             .pipe(filter_extreme_num_plies_values)
             .pipe(filter_only_interesting_termination_values)
             .pipe(filter_extreme_rating_diffs)
             .pipe(drop_columns_from_dataframe, COLUMNS_TO_DROP_GAMES) # It's important to drop columns at the end of the cleaning process, because some of them are used in the filtering process
-            ) 
+    ) 
+
+def clean_moves_data(moves_data : pd.DataFrame, index_of_cleaned_games : pd.Series):
+    return (
+        moves_data.pipe(drop_games_not_existing_in_gamesDS, index_of_cleaned_games)
+            .pipe(drop_columns_from_dataframe, COLUMNS_TO_DROP_MOVES)
+    )
+
+def clean_data(games_data : pd.DataFrame, moves_data : pd.DataFrame):
+    cleaned_games_data = clean_games_data(games_data)
+    cleaned_moves_data = clean_moves_data(moves_data, cleaned_games_data['games_id'])
+    return cleaned_games_data, cleaned_moves_data
 
 
 def drop_columns_from_dataframe(df : pd.DataFrame, columns_to_drop):
@@ -49,4 +56,8 @@ def filter_only_interesting_termination_values(df : pd.DataFrame):
     return df[(df['termination'] != 'Abandoned') & (df['termination'] != 'Rules infraction')]
 
 def filter_extreme_rating_diffs(df : pd.DataFrame):
-    return df[(df['white_rating_diff'] < SUPERIOR_LIMIT_RATING_DIFF) & (df['black_rating_diff'] < -SUPERIOR_LIMIT_RATING_DIFF)]
+    df = df.dropna(subset=['white_rating_diff', 'black_rating_diff'])
+    return df[(df['white_rating_diff'].abs() <= SUPERIOR_LIMIT_RATING_DIFF) & (df['black_rating_diff'].abs() <= SUPERIOR_LIMIT_RATING_DIFF)]
+
+def drop_games_not_existing_in_gamesDS(moves_data : pd.DataFrame, index_of_cleaned_games : pd.Series):
+    return moves_data[moves_data['game_id'].isin(index_of_cleaned_games)]
