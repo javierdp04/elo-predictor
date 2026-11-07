@@ -18,7 +18,7 @@ INFERIOR_LIMIT_NUM_PLIES = 10
 SUPERIOR_LIMIT_RATING_DIFF = 40
 
 
-def clean_games_data(games_data : pd.DataFrame):
+def clean_games_data(games_data : pd.DataFrame) -> pd.DataFrame:
     return( 
         games_data.pipe(filter_by_equal_conditional_expression, 'event', 'Rated Rapid game')
             .pipe(filter_games_with_same_white_and_black_player)
@@ -33,12 +33,6 @@ def clean_moves_data(moves_data : pd.DataFrame, index_of_cleaned_games : pd.Seri
         moves_data.pipe(drop_games_not_existing_in_gamesDS, index_of_cleaned_games)
             .pipe(drop_columns_from_dataframe, COLUMNS_TO_DROP_MOVES)
     )
-
-def clean_data(games_data : pd.DataFrame, moves_data : pd.DataFrame):
-    cleaned_games_data = clean_games_data(games_data)
-    cleaned_moves_data = clean_moves_data(moves_data, cleaned_games_data['games_id'])
-    return cleaned_games_data, cleaned_moves_data
-
 
 def drop_columns_from_dataframe(df : pd.DataFrame, columns_to_drop):
     return df.drop(columns=columns_to_drop)
@@ -60,4 +54,5 @@ def filter_extreme_rating_diffs(df : pd.DataFrame):
     return df[(df['white_rating_diff'].abs() <= SUPERIOR_LIMIT_RATING_DIFF) & (df['black_rating_diff'].abs() <= SUPERIOR_LIMIT_RATING_DIFF)]
 
 def drop_games_not_existing_in_gamesDS(moves_data : pd.DataFrame, index_of_cleaned_games : pd.Series):
-    return moves_data[moves_data['game_id'].isin(index_of_cleaned_games)]
+    valid_ids = pd.Index(index_of_cleaned_games.astype(object))
+    return moves_data[moves_data['game_id'].astype(object).isin(valid_ids)]
