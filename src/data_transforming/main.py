@@ -85,16 +85,16 @@ def build_game_features(games : pd.DataFrame):
     white = g[common_columns].copy()
     white['is_white'] = 1
     white['elo'] = g['white_elo']
-    white['result_win'] = g['result'] == '1-0'
-    white['result_loss'] = g['result'] == '0-1'
-    white['result_draw'] = ~white['result_win'] & ~white['result_loss']
+    white['result_win'] = (g['result'] == '1-0').astype(int)
+    white['result_loss'] = (g['result'] == '0-1').astype(int)
+    white['result_draw'] = 1-white['result_win']-white['result_loss']
 
     black = g[common_columns].copy()
     black['is_white'] = 0
     black['elo'] = g['black_elo']
-    black['result_win'] = g['result'] == '0-1'
-    black['result_loss'] = g['result'] == '1-0'
-    black['result_draw'] = ~black['result_win'] & ~black['result_loss']
+    black['result_win'] = (g['result'] == '0-1').astype(int)
+    black['result_loss'] = (g['result'] == '1-0').astype(int)
+    black['result_draw'] = 1-black['result_win']-black['result_loss']
 
     return pd.concat([white, black], ignore_index=True)
 
