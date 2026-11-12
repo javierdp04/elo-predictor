@@ -88,10 +88,14 @@ chunks, writes `cleaned_games.csv` and `cleaned_moves.csv`, and saves the final
 |---|---|
 | Dummy (mean) | 235.2825 |
 | Dummy (median) | 235.2446 |
-| Random Forest Regressor | 195.9573 |
+| Random Forest Regressor | 195.9247 |
 | Linear Regressor (SVD) | 209.8862 |
 | Linear Regressor (SGD) | 209.5262 |
 | Hist gradient boosting regressor | 193.3666 |
+
+| Model | TEST MAE (Elo) |
+|---|---|
+| Hist gradient boosting regressor | 193.3757 |
 
 
 ## Setup
