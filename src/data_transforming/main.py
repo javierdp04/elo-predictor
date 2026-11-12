@@ -34,7 +34,11 @@ def fill_checkmating_moves(m: pd.DataFrame) -> pd.DataFrame:
 
 def add_win_percentages(moves : pd.DataFrame):
     cliped = moves['eval'].clip(-DECIDED_CP, DECIDED_CP)
-    mate_clipped = np.where(moves['mate'] > 0, DECIDED_CP, -DECIDED_CP)
+    mate_clipped = np.select(
+        [moves['mate'] > 0, moves['mate'] < 0,],
+        [DECIDED_CP, -DECIDED_CP],
+        default=0
+    )
     cliped = cliped.where(cliped.notna(), mate_clipped)
 
     moves['win%_white_after'] = win_pct(cliped)
