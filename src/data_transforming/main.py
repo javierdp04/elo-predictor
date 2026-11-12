@@ -17,7 +17,8 @@ def build_move_features(moves : pd.DataFrame):
             .pipe(add_win_percentages)
             .pipe(add_win_loss)
             .pipe(add_unseen_mate)
-            .pipe(sumarize_per_player)
+            .pipe(add_time_spent_on_first_5_and_10_moves)
+            .pipe(summarize_per_player)
     )
     
 def add_who_moved(moves : pd.DataFrame):
@@ -59,16 +60,36 @@ def add_unseen_mate(moves : pd.DataFrame):
     moves['unseen_mate'] = (had_mate & ~still_has_mate & mate_was_short).astype(int)
     return moves
 
-def sumarize_per_player(moves : pd.DataFrame):
-    return (
-        moves.groupby(['game_id', 'is_white'])
-         .agg(**{
-             'avg_win%_loss':         ('win_loss', 'mean'),
-             'highest_win%_loss':     ('win_loss', 'max'),
-             'num_unseen_checkmates': ('unseen_mate', 'sum'),
-         })
-         .reset_index()
+def add_time_spent_on_first_5_and_10_moves(moves : pd.DataFrame):
+    time_before = moves.groupby(['game_id', 'is_white'])['clock'].shift(1)
+
+    spent = (time_before - moves['clock']).clip(0)
+    
+    moves['time_spent_1_to_5'] = spent.where(moves['move_number'] <= 5)
+    moves['time_spent_6_to_10'] = spent.where((moves['move_number'] <= 10) & (moves['move_number'] > 5))
+    return moves
+
+def summarize_per_player(moves : pd.DataFrame):
+    summary = (moves.groupby(['game_id', 'is_white'])
+        .agg(**{
+            'avg_win%_loss':         ('win_loss', 'mean'),
+            'highest_win%_loss':     ('win_loss', 'max'),
+            'num_unseen_checkmates': ('unseen_mate', 'sum'),
+            'time_spent_1_to_5_moves' : ('time_spent_1_to_5', 'sum'),
+            'time_spent_6_to_10_moves' : ('time_spent_6_to_10', 'sum')
+        })
+        .reset_index()
     )
+
+    COLUMNS_TO_MERGE = ['game_id', 'avg_win%_loss', 'highest_win%_loss', 
+                        'num_unseen_checkmates', 'time_spent_6_to_10_moves', 'time_spent_1_to_5_moves']
+
+    b_columns = summary[summary['is_white'] == 0][COLUMNS_TO_MERGE].add_prefix('opp_').rename(columns={'opp_game_id' : 'game_id'})
+    w_columns = summary[summary['is_white'] == 1][COLUMNS_TO_MERGE].add_prefix('opp_').rename(columns={'opp_game_id' : 'game_id'})
+
+    w_df = pd.merge(summary[summary['is_white'] == 1], b_columns, on=['game_id'])
+    b_df = pd.merge(summary[summary['is_white'] == 0], w_columns, on=['game_id'])
+    return pd.concat([w_df, b_df], ignore_index=True)
 
 def build_game_features(games : pd.DataFrame):
     g = games.copy()
